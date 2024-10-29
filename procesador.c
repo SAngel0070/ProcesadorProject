@@ -35,35 +35,59 @@ void update_flags(Processor *cpu, int result) {
 
 // Ejecuta la unidad de control y la ALU
 void alu_and_control_unity(Processor *cpu) {
-    if (cpu->PC < 0 || cpu->PC >= MAX_INSTRUCTIONS) {
-        printf("Error: PC fuera de límites\n");
-        return;
-    }
+  Instruction *instr = &cpu->code_memory[cpu->PC];
+  int op1_val = cpu->registers[instr->op1 - 'A'];
+  int op2_val = (instr->op2 < MEM_SIZE) ? cpu->memory[instr->op2] : instr->op2;
+  int result = 0;
 
-    Instruction *instr = &cpu->code_memory[cpu->PC];
-    if (instr->op1 < 'A' || instr->op1 >= 'A' + NUM_REGISTERS) {
-        printf("Registro inválido: %c\n", instr->op1);
-        return;
-    }
-
-    int op1_val = cpu->registers[instr->op1 - 'A'];
-    int op2_val = instr->op2;
-    int result = 0;
-
-    if (strcmp(instr->inst, "ADD") == 0) {
-        result = op1_val + op2_val;
-        cpu->registers[instr->op1 - 'A'] = result;
-    } else if (strcmp(instr->inst, "SUB") == 0) {
-        result = op1_val - op2_val;
-        cpu->registers[instr->op1 - 'A'] = result;
-    } else if (strcmp(instr->inst, "MOV") == 0) {
-        cpu->registers[instr->op1 - 'A'] = op2_val;
-    } else {
-        printf("Instrucción desconocida: %s\n", instr->inst);
-    }
-
+  if (strcmp(instr->inst, "MOV") == 0) {
+    if (instr->op2 < MEM_SIZE)  // Carga de memoria a registro
+      cpu->registers[instr->op1 - 'A'] = cpu->memory[instr->op2];
+    else  // Carga de inmediato a registro
+      cpu->registers[instr->op1 - 'A'] = instr->op2;
+  } else if (strcmp(instr->inst, "ADD") == 0) {
+    result = op1_val + op2_val;
+    cpu->registers[instr->op1 - 'A'] = result;
+  } else if (strcmp(instr->inst, "SUB") == 0) {
+    result = op1_val - op2_val;
+    cpu->registers[instr->op1 - 'A'] = result;
+  } else if (strcmp(instr->inst, "CMP") == 0) {
+    result = op1_val - op2_val;
     update_flags(cpu, result);
-    cpu->PC++;
+  } else if (strcmp(instr->inst, "STORE") == 0) {
+    if (instr->op2 < MEM_SIZE)
+      cpu->memory[instr->op2] = op1_val;
+    else
+      printf("Error: Dirección de memoria inválida para STORE\n");
+  } else if (strcmp(instr->inst, "LOAD") == 0) {
+    if (instr->op2 < MEM_SIZE)
+      cpu->registers[instr->op1 - 'A'] = cpu->memory[instr->op2];
+    else
+      printf("Error: Dirección de memoria inválida para LOAD\n");
+  } else if (strcmp(instr->inst, "JMP") == 0) {
+    if (instr->op2 < MAX_INSTRUCTIONS)
+      cpu->PC = instr->op2;
+    else
+      printf("Error: Dirección de salto inválida para JMP\n");
+    return; // No incrementar PC después de JMP
+  } else if (strcmp(instr->inst, "JZ") == 0) {
+    if (cpu->flags[ZF] && instr->op2 < MAX_INSTRUCTIONS)
+      cpu->PC = instr->op2;
+    else
+      cpu->PC++;
+    return;
+  } else if (strcmp(instr->inst, "JN") == 0) {
+    if (cpu->flags[NF] && instr->op2 < MAX_INSTRUCTIONS)
+      cpu->PC = instr->op2;
+    else
+      cpu->PC++;
+    return;
+  } else {
+    printf("Instrucción desconocida: %s\n", instr->inst);
+  }
+
+  update_flags(cpu, result);
+  cpu->PC++;  // Incrementa PC si no hay salto
 }
 
 // Imprime el estado del procesador en pantalla

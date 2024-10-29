@@ -5,9 +5,9 @@
 
 // Inicializa el procesador con memoria y registros en cero
 void init_processor(Processor *cpu) {
-    memset(cpu->memory, 0, sizeof(cpu->memory));
-    memset(cpu->registers, 0, sizeof(cpu->registers));
-    memset(cpu->flags, 0, sizeof(cpu->flags));
+    memset(cpu->memory, 0, 256);
+    memset(cpu->registers, 0, 2);
+    memset(cpu->flags, 0, 2);
     cpu->PC = 0;
 }
 
